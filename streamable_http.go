@@ -270,6 +270,24 @@ func (s *AppServer) processToolsList(request *JSONRPCRequest) *JSONRPCResponse {
 				"required": []string{"feed_id", "xsec_token"},
 			},
 		},
+		{
+			"name":        "collect_feed",
+			"description": "收藏或取消收藏小红书笔记",
+			"inputSchema": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"feed_id": map[string]interface{}{
+						"type":        "string",
+						"description": "小红书笔记ID，从Feed列表获取",
+					},
+					"xsec_token": map[string]interface{}{
+						"type":        "string",
+						"description": "访问令牌，从Feed列表的xsecToken字段获取",
+					},
+				},
+				"required": []string{"feed_id", "xsec_token"},
+			},
+		},
 	}
 
 	return &JSONRPCResponse{
@@ -316,6 +334,8 @@ func (s *AppServer) processToolCall(ctx context.Context, request *JSONRPCRequest
 		result = s.handlePostComment(ctx, toolArgs)
 	case "like_feed":
 		result = s.handleLikeFeed(ctx, toolArgs)
+	case "collect_feed":
+		result = s.handleCollectFeed(ctx, toolArgs)
 	default:
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",

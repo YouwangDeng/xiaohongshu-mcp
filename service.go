@@ -268,3 +268,43 @@ func (s *XiaohongshuService) LikeFeed(ctx context.Context, feedID, xsecToken str
 
 	return response, nil
 }
+
+// CollectFeed 收藏或取消收藏Feed
+func (s *XiaohongshuService) CollectFeed(ctx context.Context, feedID, xsecToken string) (*CollectFeedResponse, error) {
+	// 使用非无头模式以便查看操作过程
+	b := browser.NewBrowser(false)
+	defer b.Close()
+
+	page := b.NewPage()
+	defer page.Close()
+
+	// 创建 Feed 收藏 action
+	action := xiaohongshu.NewCollectFeedAction(page)
+
+	// 执行收藏操作
+	result, err := action.CollectPost(ctx, feedID, xsecToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建响应消息
+	var message string
+	switch result.Action {
+	case "collected":
+		message = "收藏成功"
+	case "uncollected":
+		message = "取消收藏成功"
+	default:
+		message = "收藏状态无变化"
+	}
+
+	response := &CollectFeedResponse{
+		FeedID:       feedID,
+		Success:      true,
+		Message:      message,
+		Collected:    result.Collected,
+		CollectCount: result.CollectCount,
+	}
+
+	return response, nil
+}

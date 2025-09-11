@@ -340,3 +340,58 @@ func (s *AppServer) handleLikeFeed(ctx context.Context, args map[string]interfac
 		}},
 	}
 }
+
+// handleCollectFeed 处理收藏Feed
+func (s *AppServer) handleCollectFeed(ctx context.Context, args map[string]interface{}) *MCPToolResult {
+	logrus.Info("MCP: 收藏Feed")
+
+	// 解析参数
+	feedID, ok := args["feed_id"].(string)
+	if !ok || feedID == "" {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "收藏失败: 缺少feed_id参数",
+			}},
+			IsError: true,
+		}
+	}
+
+	xsecToken, ok := args["xsec_token"].(string)
+	if !ok || xsecToken == "" {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "收藏失败: 缺少xsec_token参数",
+			}},
+			IsError: true,
+		}
+	}
+
+	logrus.Infof("MCP: 收藏Feed - Feed ID: %s", feedID)
+
+	// 执行收藏操作
+	result, err := s.xiaohongshuService.CollectFeed(ctx, feedID, xsecToken)
+	if err != nil {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "收藏失败: " + err.Error(),
+			}},
+			IsError: true,
+		}
+	}
+
+	// 返回成功结果
+	resultText := fmt.Sprintf("收藏操作成功 - Feed ID: %s, 状态: %s, 收藏数: %s",
+		result.FeedID,
+		map[bool]string{true: "已收藏", false: "未收藏"}[result.Collected],
+		result.CollectCount)
+
+	return &MCPToolResult{
+		Content: []MCPContent{{
+			Type: "text",
+			Text: resultText,
+		}},
+	}
+}

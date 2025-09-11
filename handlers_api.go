@@ -166,6 +166,27 @@ func (s *AppServer) likeFeedHandler(c *gin.Context) {
 	respondSuccess(c, result, result.Message)
 }
 
+// collectFeedHandler 收藏Feed
+func (s *AppServer) collectFeedHandler(c *gin.Context) {
+	var req CollectFeedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, "INVALID_REQUEST",
+			"请求参数错误", err.Error())
+		return
+	}
+
+	// 执行收藏操作
+	result, err := s.xiaohongshuService.CollectFeed(c.Request.Context(), req.FeedID, req.XsecToken)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "COLLECT_FEED_FAILED",
+			"收藏失败", err.Error())
+		return
+	}
+
+	c.Set("account", "ai-report")
+	respondSuccess(c, result, result.Message)
+}
+
 // healthHandler 健康检查
 func healthHandler(c *gin.Context) {
 	respondSuccess(c, map[string]any{

@@ -101,3 +101,18 @@ type LikeFeedResponse struct {
 	Liked     bool   `json:"liked"`      // Current like status
 	LikeCount string `json:"like_count"` // Updated like count
 }
+
+// CollectFeedRequest 收藏请求
+type CollectFeedRequest struct {
+	FeedID    string `json:"feed_id" binding:"required"`
+	XsecToken string `json:"xsec_token" binding:"required"`
+}
+
+// CollectFeedResponse 收藏响应
+type CollectFeedResponse struct {
+	FeedID       string `json:"feed_id"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	Collected    bool   `json:"collected"`      // Current collect status
+	CollectCount string `json:"collect_count"` // Updated collect count
+}

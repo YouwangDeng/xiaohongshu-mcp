@@ -182,6 +182,34 @@ npx @modelcontextprotocol/inspector
 
 示例中是从 https://unsplash.com/ 中随机找了个图片做测试。
 
+**⚠️ 图片路径使用说明：**
+
+发布功能支持三种图片路径格式：
+
+1. **绝对路径**（推荐）：
+   ```
+   /Users/username/Desktop/image.png
+   /home/user/pictures/photo.jpg
+   ```
+
+2. **相对路径**：
+   ```
+   ./images/photo.png
+   ../assets/image.jpg
+   ```
+
+3. **网络 URL**：
+   ```
+   https://example.com/image.png
+   https://unsplash.com/photos/abc123.jpg
+   ```
+
+**注意事项：**
+- 暂不支持 `~/Desktop/image.png` 格式的波浪号路径
+- 建议使用绝对路径以避免路径解析问题
+- 支持常见图片格式：PNG, JPG, JPEG, GIF
+- 单次最多支持 9 张图片
+
 ![发布图文](./assets/inspect_mcp_publish.gif)
 
 ### 搜索内容
@@ -387,12 +415,17 @@ npx @modelcontextprotocol/inspector
 
 - `check_login_status` - 检查小红书登录状态（无参数）
 - `publish_content` - 发布图文内容到小红书（必需：title, content, images）
+  - **images 参数支持**：绝对路径（推荐）、相对路径、网络URL
+  - **路径示例**：`["/Users/user/image.png", "https://example.com/photo.jpg"]`
+  - **注意**：暂不支持 `~/` 波浪号路径格式
 - `list_feeds` - 获取小红书首页推荐列表（无参数）
 - `search_feeds` - 搜索小红书内容（需要：keyword）
 - `get_feed_detail` - 获取帖子详情（需要：feed_id, xsec_token）
 - `post_comment_to_feed` - 发表评论到小红书帖子（需要：feed_id, xsec_token, content）
 
 ### 2.4. 使用示例
+
+#### 示例 1：使用网络图片发布
 
 使用 Claude Code 发布内容到小红书：
 
@@ -403,6 +436,23 @@ npx @modelcontextprotocol/inspector
 
 使用 xiaohongshu-mcp 进行发布。
 ```
+
+#### 示例 2：使用本地图片发布
+
+```
+请发布一篇关于厨房神器的小红书帖子：
+标题：全自动刨切神器来袭🍳
+内容：最近入手了这款神器，真的太省心了！...
+图片：/Users/username/Desktop/product.png
+
+使用 xiaohongshu-mcp 进行发布。
+```
+
+**图片路径格式对比：**
+- ✅ 绝对路径：`/Users/username/Desktop/image.png`
+- ✅ 相对路径：`./images/photo.png`
+- ✅ 网络 URL：`https://example.com/image.jpg`
+- ❌ 波浪号路径：`~/Desktop/image.png`（暂不支持）
 
 ![claude-cli 进行发布](./assets/claude_push.gif)
 

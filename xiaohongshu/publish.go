@@ -84,16 +84,71 @@ func (p *PublishAction) Publish(ctx context.Context, content PublishImageContent
 func uploadImages(page *rod.Page, imagesPaths []string) error {
 	pp := page.Timeout(30 * time.Second)
 
+	slog.Info("开始上传图片", "paths", imagesPaths)
+
 	// 等待上传输入框出现
 	uploadInput := pp.MustElement(".upload-input")
+	slog.Info("找到上传输入框")
 
 	// 上传多个文件
 	uploadInput.MustSetFiles(imagesPaths...)
+	slog.Info("文件已设置到上传输入框")
 
-	// 等待上传完成
-	time.Sleep(3 * time.Second)
+	// 等待上传完成，增加等待时间
+	time.Sleep(5 * time.Second)
 
+	// 检查是否有上传错误提示
+	if hasError, err := checkUploadErrors(pp); err != nil {
+		slog.Error("检查上传错误时出现问题", "error", err)
+	} else if hasError {
+		return errors.New("图片上传失败，请检查图片格式和大小")
+	}
+
+	slog.Info("图片上传完成")
 	return nil
+}
+
+// checkUploadErrors 检查页面上是否有上传错误提示
+func checkUploadErrors(page *rod.Page) (bool, error) {
+	// 检查常见的错误提示元素
+	errorSelectors := []string{
+		".upload-error",
+		".error-message", 
+		".upload-failed",
+		"[class*='error']",
+		"[class*='fail']",
+	}
+
+	for _, selector := range errorSelectors {
+		exists, _, err := page.Has(selector)
+		if err != nil {
+			continue // 忽略选择器错误，继续检查下一个
+		}
+		if exists {
+			// 尝试获取错误信息
+			if elem, err := page.Element(selector); err == nil {
+				if text, err := elem.Text(); err == nil {
+					slog.Error("发现上传错误", "selector", selector, "message", text)
+					return true, nil
+				}
+			}
+			return true, nil
+		}
+	}
+
+	// 检查页面文本中是否包含失败相关的中文提示
+	pageText, err := page.MustElement("body").Text()
+	if err == nil {
+		failureKeywords := []string{"上传失败", "文件上传失败", "部分文件上传失败", "格式不支持", "文件过大"}
+		for _, keyword := range failureKeywords {
+			if strings.Contains(pageText, keyword) {
+				slog.Error("页面包含失败关键词", "keyword", keyword)
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func submitPublish(page *rod.Page, title, content string) error {

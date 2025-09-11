@@ -228,3 +228,43 @@ func (s *XiaohongshuService) PostCommentToFeed(ctx context.Context, feedID, xsec
 
 	return response, nil
 }
+
+// LikeFeed 点赞或取消点赞Feed
+func (s *XiaohongshuService) LikeFeed(ctx context.Context, feedID, xsecToken string) (*LikeFeedResponse, error) {
+	// 使用非无头模式以便查看操作过程
+	b := browser.NewBrowser(false)
+	defer b.Close()
+
+	page := b.NewPage()
+	defer page.Close()
+
+	// 创建 Feed 点赞 action
+	action := xiaohongshu.NewLikeFeedAction(page)
+
+	// 执行点赞操作
+	result, err := action.LikePost(ctx, feedID, xsecToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建响应消息
+	var message string
+	switch result.Action {
+	case "liked":
+		message = "点赞成功"
+	case "unliked":
+		message = "取消点赞成功"
+	default:
+		message = "点赞状态无变化"
+	}
+
+	response := &LikeFeedResponse{
+		FeedID:    feedID,
+		Success:   true,
+		Message:   message,
+		Liked:     result.Liked,
+		LikeCount: result.LikeCount,
+	}
+
+	return response, nil
+}

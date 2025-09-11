@@ -86,3 +86,18 @@ type PostCommentResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
+
+// LikeFeedRequest 点赞请求
+type LikeFeedRequest struct {
+	FeedID    string `json:"feed_id" binding:"required"`
+	XsecToken string `json:"xsec_token" binding:"required"`
+}
+
+// LikeFeedResponse 点赞响应
+type LikeFeedResponse struct {
+	FeedID    string `json:"feed_id"`
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	Liked     bool   `json:"liked"`      // Current like status
+	LikeCount string `json:"like_count"` // Updated like count
+}

@@ -285,3 +285,58 @@ func (s *AppServer) handlePostComment(ctx context.Context, args map[string]inter
 		}},
 	}
 }
+
+// handleLikeFeed 处理点赞Feed
+func (s *AppServer) handleLikeFeed(ctx context.Context, args map[string]interface{}) *MCPToolResult {
+	logrus.Info("MCP: 点赞Feed")
+
+	// 解析参数
+	feedID, ok := args["feed_id"].(string)
+	if !ok || feedID == "" {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "点赞失败: 缺少feed_id参数",
+			}},
+			IsError: true,
+		}
+	}
+
+	xsecToken, ok := args["xsec_token"].(string)
+	if !ok || xsecToken == "" {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "点赞失败: 缺少xsec_token参数",
+			}},
+			IsError: true,
+		}
+	}
+
+	logrus.Infof("MCP: 点赞Feed - Feed ID: %s", feedID)
+
+	// 执行点赞操作
+	result, err := s.xiaohongshuService.LikeFeed(ctx, feedID, xsecToken)
+	if err != nil {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "点赞失败: " + err.Error(),
+			}},
+			IsError: true,
+		}
+	}
+
+	// 返回成功结果
+	resultText := fmt.Sprintf("点赞操作成功 - Feed ID: %s, 状态: %s, 点赞数: %s",
+		result.FeedID,
+		map[bool]string{true: "已点赞", false: "未点赞"}[result.Liked],
+		result.LikeCount)
+
+	return &MCPToolResult{
+		Content: []MCPContent{{
+			Type: "text",
+			Text: resultText,
+		}},
+	}
+}

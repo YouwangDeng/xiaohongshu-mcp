@@ -145,6 +145,27 @@ func (s *AppServer) postCommentHandler(c *gin.Context) {
 	respondSuccess(c, result, result.Message)
 }
 
+// likeFeedHandler 点赞Feed
+func (s *AppServer) likeFeedHandler(c *gin.Context) {
+	var req LikeFeedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, "INVALID_REQUEST",
+			"请求参数错误", err.Error())
+		return
+	}
+
+	// 执行点赞操作
+	result, err := s.xiaohongshuService.LikeFeed(c.Request.Context(), req.FeedID, req.XsecToken)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "LIKE_FEED_FAILED",
+			"点赞失败", err.Error())
+		return
+	}
+
+	c.Set("account", "ai-report")
+	respondSuccess(c, result, result.Message)
+}
+
 // healthHandler 健康检查
 func healthHandler(c *gin.Context) {
 	respondSuccess(c, map[string]any{

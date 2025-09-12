@@ -3,6 +3,7 @@ package xiaohongshu
 import (
 	"context"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -158,10 +159,14 @@ func submitPublish(page *rod.Page, title, content string) error {
 
 	time.Sleep(1 * time.Second)
 
-	if contentElem, ok := getContentElement(page); ok {
-		contentElem.MustInput(content)
-	} else {
+	contentElem, ok := getContentElement(page)
+	if !ok {
 		return errors.New("没有找到内容输入框")
+	}
+
+	// 处理带话题的内容
+	if err := inputContentWithTopics(page, contentElem, content); err != nil {
+		return errors.Wrap(err, "输入内容和话题失败")
 	}
 
 	time.Sleep(1 * time.Second)
@@ -171,6 +176,99 @@ func submitPublish(page *rod.Page, title, content string) error {
 
 	time.Sleep(3 * time.Second)
 
+	return nil
+}
+
+// inputContentWithTopics 输入内容并处理话题选择
+func inputContentWithTopics(page *rod.Page, contentElem *rod.Element, content string) error {
+	slog.Info("开始输入内容并处理话题", "content", content)
+	
+	// 点击内容框获得焦点
+	contentElem.MustClick()
+	
+	// 使用正则表达式找到所有话题
+	topicRegex := regexp.MustCompile(`#([^\s#]+)`)
+	topics := topicRegex.FindAllString(content, -1)
+	
+	// 移除原内容中的话题，得到纯文本
+	contentWithoutTopics := topicRegex.ReplaceAllString(content, "")
+	
+	// 先输入纯文本内容
+	slog.Info("输入纯文本内容", "content", contentWithoutTopics)
+	contentElem.MustInput(contentWithoutTopics)
+	
+	// 如果有话题，在新行添加话题
+	if len(topics) > 0 {
+		// 添加两个换行符，创建空行分隔
+		contentElem.MustInput("\n\n")
+		
+		// 逐个添加话题
+		for i, topic := range topics {
+			slog.Info("输入话题", "topic", topic)
+			
+			// 如果不是第一个话题，添加空格分隔
+			if i > 0 {
+				contentElem.MustInput(" ")
+			}
+			
+			// 输入话题（包含#号）
+			contentElem.MustInput(topic)
+			
+			// 等待话题选择弹窗出现
+			time.Sleep(2 * time.Second)
+			
+			// 查找并点击话题选择容器中的第一个项目
+			if err := selectTopicFromPopup(page); err != nil {
+				slog.Warn("选择话题失败，继续处理", "topic", topic, "error", err)
+				// 不返回错误，继续处理剩余话题
+			}
+		}
+	}
+	
+	slog.Info("内容和话题输入完成")
+	return nil
+}
+
+// selectTopicFromPopup 从话题选择弹窗中选择第一个话题
+func selectTopicFromPopup(page *rod.Page) error {
+	// 查找话题选择容器
+	containerSelector := "#creator-editor-topic-container"
+	
+	// 等待容器出现，设置较短的超时时间
+	container, err := page.Timeout(3 * time.Second).Element(containerSelector)
+	if err != nil {
+		return errors.Wrap(err, "话题选择容器未找到")
+	}
+	
+	// 查找第一个话题项目
+	itemSelectors := []string{
+		".item.is-selected", // 优先选择已选中的
+		".item:first-child", // 或者第一个项目
+		".item",             // 或者任意项目
+	}
+	
+	var selectedItem *rod.Element
+	for _, selector := range itemSelectors {
+		if item, err := container.Element(selector); err == nil {
+			selectedItem = item
+			break
+		}
+	}
+	
+	if selectedItem == nil {
+		return errors.New("未找到可选择的话题项目")
+	}
+	
+	// 点击选择话题
+	if err := selectedItem.Click(proto.InputMouseButtonLeft, 1); err != nil {
+		return errors.Wrap(err, "点击话题项目失败")
+	}
+	
+	slog.Info("成功选择话题")
+	
+	// 等待弹窗消失
+	time.Sleep(500 * time.Millisecond)
+	
 	return nil
 }
 

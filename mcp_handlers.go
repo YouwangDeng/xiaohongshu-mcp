@@ -41,6 +41,7 @@ func (s *AppServer) handlePublishContent(ctx context.Context, args map[string]in
 	// 解析参数
 	title, _ := args["title"].(string)
 	content, _ := args["content"].(string)
+	publishTime, _ := args["publish_time"].(string)
 	imagePathsInterface, _ := args["images"].([]interface{})
 
 	var imagePaths []string
@@ -50,13 +51,14 @@ func (s *AppServer) handlePublishContent(ctx context.Context, args map[string]in
 		}
 	}
 
-	logrus.Infof("MCP: 发布内容 - 标题: %s, 图片数量: %d", title, len(imagePaths))
+	logrus.Infof("MCP: 发布内容 - 标题: %s, 图片数量: %d, 发布时间: %s", title, len(imagePaths), publishTime)
 
 	// 构建发布请求
 	req := &PublishRequest{
-		Title:   title,
-		Content: content,
-		Images:  imagePaths,
+		Title:       title,
+		Content:     content,
+		Images:      imagePaths,
+		PublishTime: publishTime,
 	}
 
 	// 执行发布

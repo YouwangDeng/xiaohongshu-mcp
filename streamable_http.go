@@ -186,6 +186,10 @@ func (s *AppServer) processToolsList(request *JSONRPCRequest) *JSONRPCResponse {
 						},
 						"minItems": 1,
 					},
+					"publish_time": map[string]interface{}{
+						"type":        "string",
+						"description": "可选的定时发布时间，格式为 '2025-09-12 14:22'（北京时间），不提供则立即发布",
+					},
 				},
 				"required": []string{"title", "content", "images"},
 			},

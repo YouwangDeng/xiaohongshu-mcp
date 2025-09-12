@@ -14,9 +14,10 @@ import (
 
 // PublishImageContent 发布图文内容
 type PublishImageContent struct {
-	Title      string
-	Content    string
-	ImagePaths []string
+	Title       string
+	Content     string
+	ImagePaths  []string
+	PublishTime string // 可选的定时发布时间，格式: "2025-09-12 14:22"（北京时间）
 }
 
 type PublishAction struct {
@@ -75,7 +76,7 @@ func (p *PublishAction) Publish(ctx context.Context, content PublishImageContent
 		return errors.Wrap(err, "小红书上传图片失败")
 	}
 
-	if err := submitPublish(page, content.Title, content.Content); err != nil {
+	if err := submitPublish(page, content.Title, content.Content, content.PublishTime); err != nil {
 		return errors.Wrap(err, "小红书发布失败")
 	}
 
@@ -152,7 +153,7 @@ func checkUploadErrors(page *rod.Page) (bool, error) {
 	return false, nil
 }
 
-func submitPublish(page *rod.Page, title, content string) error {
+func submitPublish(page *rod.Page, title, content, publishTime string) error {
 
 	titleElem := page.MustElement("div.d-input input")
 	titleElem.MustInput(title)
@@ -171,11 +172,87 @@ func submitPublish(page *rod.Page, title, content string) error {
 
 	time.Sleep(1 * time.Second)
 
+	// 如果提供了发布时间，设置定时发布
+	if publishTime != "" {
+		if err := setScheduledPublish(page, publishTime); err != nil {
+			return errors.Wrap(err, "设置定时发布失败")
+		}
+	}
+
 	submitButton := page.MustElement("div.submit div.d-button-content")
 	submitButton.MustClick()
 
 	time.Sleep(3 * time.Second)
 
+	return nil
+}
+
+// setScheduledPublish 设置定时发布
+func setScheduledPublish(page *rod.Page, publishTime string) error {
+	slog.Info("设置定时发布", "publishTime", publishTime)
+	
+	// 查找并点击"定时发布"单选按钮
+	scheduledRadio, err := page.Element("span.el-radio__label")
+	if err != nil {
+		return errors.Wrap(err, "未找到定时发布单选按钮")
+	}
+	
+	// 检查是否是"定时发布"标签
+	labelText, err := scheduledRadio.Text()
+	if err != nil || labelText != "定时发布" {
+		// 如果第一个不是，尝试查找所有的单选按钮标签
+		radioLabels, err := page.Elements("span.el-radio__label")
+		if err != nil {
+			return errors.Wrap(err, "未找到单选按钮标签")
+		}
+		
+		var foundScheduledRadio *rod.Element
+		for _, label := range radioLabels {
+			text, err := label.Text()
+			if err != nil {
+				continue
+			}
+			if text == "定时发布" {
+				foundScheduledRadio = label
+				break
+			}
+		}
+		
+		if foundScheduledRadio == nil {
+			return errors.New("未找到'定时发布'单选按钮")
+		}
+		scheduledRadio = foundScheduledRadio
+	}
+	
+	// 点击定时发布单选按钮
+	if err := scheduledRadio.Click(proto.InputMouseButtonLeft, 1); err != nil {
+		return errors.Wrap(err, "点击定时发布单选按钮失败")
+	}
+	
+	slog.Info("已点击定时发布单选按钮")
+	time.Sleep(1 * time.Second)
+	
+	// 查找时间输入框
+	timeInput, err := page.Element("input.el-input__inner[placeholder*='选择日期和时间']")
+	if err != nil {
+		return errors.Wrap(err, "未找到时间输入框")
+	}
+	
+	// 点击时间输入框并输入时间
+	if err := timeInput.Click(proto.InputMouseButtonLeft, 1); err != nil {
+		return errors.Wrap(err, "点击时间输入框失败")
+	}
+	
+	// 清空输入框并输入新时间
+	timeInput.MustSelectAllText()
+	timeInput.MustInput(publishTime)
+	
+	slog.Info("已输入发布时间", "time", publishTime)
+	
+	// 点击输入框外部以确认时间选择
+	page.MustElement("body").MustClick()
+	time.Sleep(500 * time.Millisecond)
+	
 	return nil
 }
 

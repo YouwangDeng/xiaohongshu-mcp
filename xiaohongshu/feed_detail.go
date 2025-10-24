@@ -31,42 +31,33 @@ func (f *FeedDetailAction) GetFeedDetail(ctx context.Context, feedID, xsecToken 
 	page.MustWaitDOMStable()
 	time.Sleep(1 * time.Second)
 
-	// 获取 window.__INITIAL_STATE__ 并转换为 JSON 字符串
-	result := page.MustEval(`() => {
-		if (window.__INITIAL_STATE__) {
-			return JSON.stringify(window.__INITIAL_STATE__);
+	// 获取 window.__INITIAL_STATE__.note.noteDetailMap[feedID] 并转换为 JSON 字符串
+	// 直接提取特定 feedID 的数据，避免 Vue.js 响应式对象的循环引用
+	result := page.MustEval(fmt.Sprintf(`() => {
+		if (window.__INITIAL_STATE__ && 
+			window.__INITIAL_STATE__.note && 
+			window.__INITIAL_STATE__.note.noteDetailMap &&
+			window.__INITIAL_STATE__.note.noteDetailMap["%s"]) {
+			const noteDetail = window.__INITIAL_STATE__.note.noteDetailMap["%s"];
+			return JSON.stringify({
+				note: noteDetail.note,
+				comments: noteDetail.comments
+			});
 		}
 		return "";
-	}`).String()
+	}`, feedID, feedID)).String()
 
 	if result == "" {
-		return nil, fmt.Errorf("__INITIAL_STATE__ not found")
+		return nil, fmt.Errorf("feed detail not found for feedID: %s", feedID)
 	}
 
-	// 定义响应结构并直接反序列化
-	var initialState struct {
-		Note struct {
-			NoteDetailMap map[string]struct {
-				Note     FeedDetail  `json:"note"`
-				Comments CommentList `json:"comments"`
-			} `json:"noteDetailMap"`
-		} `json:"note"`
+	// 直接解析为 FeedDetailResponse
+	var response FeedDetailResponse
+	if err := json.Unmarshal([]byte(result), &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal feed detail: %w", err)
 	}
 
-	if err := json.Unmarshal([]byte(result), &initialState); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal __INITIAL_STATE__: %w", err)
-	}
-
-	// 从 noteDetailMap 中获取对应 feedID 的数据
-	noteDetail, exists := initialState.Note.NoteDetailMap[feedID]
-	if !exists {
-		return nil, fmt.Errorf("feed %s not found in noteDetailMap", feedID)
-	}
-
-	return &FeedDetailResponse{
-		Note:     noteDetail.Note,
-		Comments: noteDetail.Comments,
-	}, nil
+	return &response, nil
 }
 
 func makeFeedDetailURL(feedID, xsecToken string) string {

@@ -35,24 +35,26 @@ func (s *SearchAction) Search(ctx context.Context, keyword string) ([]Feed, erro
 
 	page.MustWait(`() => window.__INITIAL_STATE__ !== undefined`)
 
-	// 获取 window.__INITIAL_STATE__ 并转换为 JSON 字符串
+	// 获取 window.__INITIAL_STATE__.search.feeds._value 并转换为 JSON 字符串
+	// 直接提取 feeds 数组，避免 Vue.js 响应式对象的循环引用
 	result := page.MustEval(`() => {
-			if (window.__INITIAL_STATE__) {
-				return JSON.stringify(window.__INITIAL_STATE__);
+			if (window.__INITIAL_STATE__ && window.__INITIAL_STATE__.search && window.__INITIAL_STATE__.search.feeds) {
+				return JSON.stringify(window.__INITIAL_STATE__.search.feeds._value);
 			}
-			return "";
+			return "[]";
 		}`).String()
 
-	if result == "" {
-		return nil, fmt.Errorf("__INITIAL_STATE__ not found")
+	if result == "[]" {
+		return []Feed{}, nil
 	}
 
-	var searchResult SearchResult
-	if err := json.Unmarshal([]byte(result), &searchResult); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal __INITIAL_STATE__: %w", err)
+	// 直接解析为 Feed 数组
+	var feeds []Feed
+	if err := json.Unmarshal([]byte(result), &feeds); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal search feeds: %w", err)
 	}
 
-	return searchResult.Search.Feeds.Value, nil
+	return feeds, nil
 }
 
 func makeSearchURL(keyword string) string {

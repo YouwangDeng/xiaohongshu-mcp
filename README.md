@@ -1,4 +1,4 @@
-# xiaohongshu-mcp
+s# xiaohongshu-mcp
 
 MCP for 小红书/xiaohongshu.com。
 

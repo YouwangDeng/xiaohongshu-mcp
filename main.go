@@ -11,7 +11,7 @@ func main() {
 	var (
 		headless bool
 	)
-	flag.BoolVar(&headless, "headless", true, "是否无头模式")
+	flag.BoolVar(&headless, "headless", false, "是否无头模式")
 	flag.Parse()
 
 	configs.InitHeadless(headless)

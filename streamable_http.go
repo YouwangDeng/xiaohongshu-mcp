@@ -292,6 +292,43 @@ func (s *AppServer) processToolsList(request *JSONRPCRequest) *JSONRPCResponse {
 				"required": []string{"feed_id", "xsec_token"},
 			},
 		},
+		{
+			"name":        "publish_article",
+			"description": "发布小红书长文章内容",
+			"inputSchema": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"title": map[string]interface{}{
+						"type":        "string",
+						"description": "文章标题（最多64字符）",
+					},
+					"content": map[string]interface{}{
+						"type":        "string",
+						"description": "正文内容",
+					},
+					"tags": map[string]interface{}{
+						"type":        "array",
+						"description": "标签列表，与内容分开（可选）",
+						"items": map[string]interface{}{
+							"type": "string",
+						},
+					},
+					"images": map[string]interface{}{
+						"type":        "array",
+						"description": "图片路径列表，必须使用绝对路径或URL（至少需要1张图片）",
+						"items": map[string]interface{}{
+							"type": "string",
+						},
+						"minItems": 1,
+					},
+					"publish_time": map[string]interface{}{
+						"type":        "string",
+						"description": "可选的定时发布时间，格式为 '2025-09-12 14:22'（北京时间），不提供则立即发布",
+					},
+				},
+				"required": []string{"title", "content", "images"},
+			},
+		},
 	}
 
 	return &JSONRPCResponse{
@@ -328,6 +365,8 @@ func (s *AppServer) processToolCall(ctx context.Context, request *JSONRPCRequest
 		result = s.handleCheckLoginStatus(ctx)
 	case "publish_content":
 		result = s.handlePublishContent(ctx, toolArgs)
+	case "publish_article":
+		result = s.handlePublishArticle(ctx, toolArgs)
 	case "list_feeds":
 		result = s.handleListFeeds(ctx)
 	case "search_feeds":

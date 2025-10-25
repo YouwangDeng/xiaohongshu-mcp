@@ -82,6 +82,66 @@ func (s *AppServer) handlePublishContent(ctx context.Context, args map[string]in
 	}
 }
 
+// handlePublishArticle 处理发布文章
+func (s *AppServer) handlePublishArticle(ctx context.Context, args map[string]interface{}) *MCPToolResult {
+	logrus.Info("MCP: 发布文章")
+
+	// 解析参数
+	title, _ := args["title"].(string)
+	content, _ := args["content"].(string)
+	publishTime, _ := args["publish_time"].(string)
+	
+	// 解析图片路径
+	imagePathsInterface, _ := args["images"].([]interface{})
+	var imagePaths []string
+	for _, path := range imagePathsInterface {
+		if pathStr, ok := path.(string); ok {
+			imagePaths = append(imagePaths, pathStr)
+		}
+	}
+
+	// 解析标签
+	tagsInterface, _ := args["tags"].([]interface{})
+	var tags []string
+	for _, tag := range tagsInterface {
+		if tagStr, ok := tag.(string); ok {
+			tags = append(tags, tagStr)
+		}
+	}
+
+	logrus.Infof("MCP: 发布文章 - 标题: %s, 图片数量: %d, 标签数量: %d, 发布时间: %s", 
+		title, len(imagePaths), len(tags), publishTime)
+
+	// 构建发布请求
+	req := &PublishArticleRequest{
+		Title:       title,
+		Content:     content,
+		Tags:        tags,
+		Images:      imagePaths,
+		PublishTime: publishTime,
+	}
+
+	// 执行发布
+	result, err := s.xiaohongshuService.PublishArticle(ctx, req)
+	if err != nil {
+		return &MCPToolResult{
+			Content: []MCPContent{{
+				Type: "text",
+				Text: "文章发布失败: " + err.Error(),
+			}},
+			IsError: true,
+		}
+	}
+
+	resultText := fmt.Sprintf("文章发布成功: %+v", result)
+	return &MCPToolResult{
+		Content: []MCPContent{{
+			Type: "text",
+			Text: resultText,
+		}},
+	}
+}
+
 // handleListFeeds 处理获取Feeds列表
 func (s *AppServer) handleListFeeds(ctx context.Context) *MCPToolResult {
 	logrus.Info("MCP: 获取Feeds列表")

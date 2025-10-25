@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mattn/go-runewidth"
+	"github.com/xpzouying/headless_browser"
 	"github.com/xpzouying/xiaohongshu-mcp/browser"
 	"github.com/xpzouying/xiaohongshu-mcp/configs"
 	"github.com/xpzouying/xiaohongshu-mcp/pkg/downloader"
@@ -12,17 +13,30 @@ import (
 )
 
 // XiaohongshuService 小红书业务服务
-type XiaohongshuService struct{}
+type XiaohongshuService struct{
+	browser *headless_browser.Browser // 共享浏览器实例，用于调试时保持打开状态
+}
 
 // NewXiaohongshuService 创建小红书服务实例
 func NewXiaohongshuService() *XiaohongshuService {
-	return &XiaohongshuService{}
+	return &XiaohongshuService{
+		browser: browser.NewBrowser(configs.IsHeadless()),
+	}
 }
 
 // PublishRequest 发布请求
 type PublishRequest struct {
 	Title       string   `json:"title" binding:"required"`
 	Content     string   `json:"content" binding:"required"`
+	Images      []string `json:"images" binding:"required,min=1"`
+	PublishTime string   `json:"publish_time,omitempty"` // 可选的定时发布时间，格式: "2025-09-12 14:22"（北京时间）
+}
+
+// PublishArticleRequest 发布文章请求
+type PublishArticleRequest struct {
+	Title       string   `json:"title" binding:"required"`
+	Content     string   `json:"content" binding:"required"`
+	Tags        []string `json:"tags,omitempty"`          // 标签列表
 	Images      []string `json:"images" binding:"required,min=1"`
 	PublishTime string   `json:"publish_time,omitempty"` // 可选的定时发布时间，格式: "2025-09-12 14:22"（北京时间）
 }
@@ -50,11 +64,7 @@ type FeedsListResponse struct {
 
 // CheckLoginStatus 检查登录状态
 func (s *XiaohongshuService) CheckLoginStatus(ctx context.Context) (*LoginStatusResponse, error) {
-	b := browser.NewBrowser(configs.IsHeadless())
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	loginAction := xiaohongshu.NewLogin(page)
 
@@ -117,11 +127,7 @@ func (s *XiaohongshuService) processImages(images []string) ([]string, error) {
 
 // publishContent 执行内容发布
 func (s *XiaohongshuService) publishContent(ctx context.Context, content xiaohongshu.PublishImageContent) error {
-	b := browser.NewBrowser(configs.IsHeadless())
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	action, err := xiaohongshu.NewPublishImageAction(page)
 	if err != nil {
@@ -134,11 +140,7 @@ func (s *XiaohongshuService) publishContent(ctx context.Context, content xiaohon
 
 // ListFeeds 获取Feeds列表
 func (s *XiaohongshuService) ListFeeds(ctx context.Context) (*FeedsListResponse, error) {
-	b := browser.NewBrowser(configs.IsHeadless())
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	// 创建 Feeds 列表 action
 	action := xiaohongshu.NewFeedsListAction(page)
@@ -158,11 +160,7 @@ func (s *XiaohongshuService) ListFeeds(ctx context.Context) (*FeedsListResponse,
 }
 
 func (s *XiaohongshuService) SearchFeeds(ctx context.Context, keyword string) (*FeedsListResponse, error) {
-	b := browser.NewBrowser(configs.IsHeadless())
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	action := xiaohongshu.NewSearchAction(page)
 
@@ -181,11 +179,7 @@ func (s *XiaohongshuService) SearchFeeds(ctx context.Context, keyword string) (*
 
 // GetFeedDetail 获取Feed详情
 func (s *XiaohongshuService) GetFeedDetail(ctx context.Context, feedID, xsecToken string) (*FeedDetailResponse, error) {
-	b := browser.NewBrowser(configs.IsHeadless())
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	// 创建 Feed 详情 action
 	action := xiaohongshu.NewFeedDetailAction(page)
@@ -206,12 +200,7 @@ func (s *XiaohongshuService) GetFeedDetail(ctx context.Context, feedID, xsecToke
 
 // PostCommentToFeed 发表评论到Feed
 func (s *XiaohongshuService) PostCommentToFeed(ctx context.Context, feedID, xsecToken, content string) (*PostCommentResponse, error) {
-	// 使用非无头模式以便查看操作过程
-	b := browser.NewBrowser(false)
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	// 创建 Feed 评论 action
 	action := xiaohongshu.NewCommentFeedAction(page)
@@ -233,12 +222,7 @@ func (s *XiaohongshuService) PostCommentToFeed(ctx context.Context, feedID, xsec
 
 // LikeFeed 点赞或取消点赞Feed
 func (s *XiaohongshuService) LikeFeed(ctx context.Context, feedID, xsecToken string) (*LikeFeedResponse, error) {
-	// 使用非无头模式以便查看操作过程
-	b := browser.NewBrowser(false)
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	// 创建 Feed 点赞 action
 	action := xiaohongshu.NewLikeFeedAction(page)
@@ -273,12 +257,7 @@ func (s *XiaohongshuService) LikeFeed(ctx context.Context, feedID, xsecToken str
 
 // CollectFeed 收藏或取消收藏Feed
 func (s *XiaohongshuService) CollectFeed(ctx context.Context, feedID, xsecToken string) (*CollectFeedResponse, error) {
-	// 使用非无头模式以便查看操作过程
-	b := browser.NewBrowser(false)
-	defer b.Close()
-
-	page := b.NewPage()
-	defer page.Close()
+	page := s.browser.NewPage()
 
 	// 创建 Feed 收藏 action
 	action := xiaohongshu.NewCollectFeedAction(page)
@@ -309,4 +288,61 @@ func (s *XiaohongshuService) CollectFeed(ctx context.Context, feedID, xsecToken 
 	}
 
 	return response, nil
+}
+
+// PublishArticle 发布文章
+func (s *XiaohongshuService) PublishArticle(ctx context.Context, req *PublishArticleRequest) (*PublishResponse, error) {
+	// 验证标题长度
+	if titleWidth := runewidth.StringWidth(req.Title); titleWidth > 64 {
+		return nil, fmt.Errorf("文章标题长度超过限制（最大64字符）")
+	}
+
+	// 处理图片：下载URL图片或使用本地路径
+	imagePaths, err := s.processImages(req.Images)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建发布内容
+	content := xiaohongshu.PublishArticleContent{
+		Title:       req.Title,
+		Content:     req.Content,
+		Tags:        req.Tags,
+		ImagePaths:  imagePaths,
+		PublishTime: req.PublishTime,
+	}
+
+	// 执行发布
+	if err := s.publishArticle(ctx, content); err != nil {
+		return nil, err
+	}
+
+	response := &PublishResponse{
+		Title:   req.Title,
+		Content: req.Content,
+		Images:  len(imagePaths),
+		Status:  "文章发布完成",
+	}
+
+	return response, nil
+}
+
+// publishArticle 执行文章发布
+func (s *XiaohongshuService) publishArticle(ctx context.Context, content xiaohongshu.PublishArticleContent) error {
+	page := s.browser.NewPage()
+
+	action, err := xiaohongshu.NewPublishArticleAction(page)
+	if err != nil {
+		return err
+	}
+
+	// 执行发布
+	return action.Publish(ctx, content)
+}
+
+// Close 关闭浏览器实例，用于清理资源
+func (s *XiaohongshuService) Close() {
+	if s.browser != nil {
+		s.browser.Close()
+	}
 }
